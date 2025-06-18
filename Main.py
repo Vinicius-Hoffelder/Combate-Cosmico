@@ -346,4 +346,199 @@ def tela_morte(tela, nome, metros):
         pygame.display.flip()
         pygame.time.Clock().tick(60)
 
-    return False 
+def tela_regras(tela):
+    global should_exit_game
+    if should_exit_game:
+        return
+
+    try:
+        fundoRegras = pygame.image.load("Arquivos/TelaMorte.png") 
+        fundoRegras = pygame.transform.scale(fundoRegras, (larguraTela, alturaTela))
+    except Exception as e:
+        print("Erro ao carregar TelaMorte.png para tela de regras:", e)
+        fundoRegras = pygame.Surface((larguraTela, alturaTela))
+        fundoRegras.fill(pretoSuave)
+
+    rodando = True
+    
+    x_pos_botao = larguraTela // 2
+    y_pos_botao = alturaTela - 60
+    botao_voltar = Botao(x_pos_botao - 100, y_pos_botao - 20, 200, 50, "VOLTAR", fonte_menu_botoes, brancoPuro, azulSuave, cinzaBotaoSairSombra)
+
+    while rodando and not should_exit_game:
+        for evento in pygame.event.get():
+            if evento.type == pygame.QUIT:
+                should_exit_game = True
+                break
+            elif evento.type == pygame.KEYDOWN:
+                if evento.key == pygame.K_ESCAPE:
+                    rodando = False 
+                    break
+            elif evento.type == pygame.MOUSEBUTTONDOWN and evento.button == 1:
+                if botao_voltar.clicado(evento.pos):
+                    rodando = False 
+                    break
+
+        if should_exit_game:
+            break
+
+        tela.blit(fundoRegras, (0, 0))
+
+        textoTitulo = fontePrincipal.render("REGRAS DO JOGO", True, brancoPuro) 
+        textoTituloRect = textoTitulo.get_rect(center=(larguraTela // 2, 70))
+        tela.blit(textoTitulo, textoTituloRect)
+
+        y_offset_texto = 150
+        linha_altura = 30 
+
+        regras_texto = [
+            "COMO JOGAR:",
+            "  MOVER: SETAS LATERAIS (ESQUERDA/DIREITA)",
+            "  ATIRAR: SETA PARA CIMA (UP)",
+            "  PAUSAR: TECLA ESPACO",
+            "",
+            "PODER ESPECIAL:",
+            "  COLETE CAIXAS MISTERIOSAS para ativar!",
+            "  UMA VEZ COLETADO: Aperte SETA PARA BAIXO (DOWN)",
+            "  Efeito: DOBRA A CAPACIDADE DE MUNICAO POR 7s.",
+            "  Tempo de Recarga da Municao: 2s (quando acaba)",
+            "",
+            "OBJETIVO:",
+            "  DESTRUA INIMIGOS E AVANCE O MAIOR NUMERO DE METROS!",
+            "  EVITE COLISOES. VOCE TEM 2 VIDAS.",
+            "  A cada 100m, capacidade de municao aumenta."
+        ]
+
+        for linha in regras_texto:
+            if "COMO JOGAR:" in linha or "PODER ESPECIAL:" in linha or "OBJETIVO:" in linha:
+                fonte_linha = fontePequena 
+            else:
+                fonte_linha = fonteMenor 
+            
+            cor_linha = brancoPuro 
+
+            texto_surf = fonte_linha.render(linha, True, cor_linha)
+            
+            texto_rect = texto_surf.get_rect(center=(larguraTela // 2, y_offset_texto + texto_surf.get_height() // 2))
+            tela.blit(texto_surf, texto_rect)
+            y_offset_texto += linha_altura
+
+        botao_voltar.draw(tela)
+
+        pygame.display.flip()
+        pygame.time.Clock().tick(60)
+
+
+def tela_capa(tela):
+    global should_exit_game 
+    if should_exit_game: 
+        return None 
+
+    try:
+        capaImg = pygame.image.load("Arquivos/Capa.jpg")
+        capaImg = pygame.transform.scale(capaImg, (larguraTela, alturaTela))
+    except Exception as e:
+        print("Erro ao carregar Capa.jpg:", e)
+        capaImg = pygame.Surface((larguraTela, alturaTela))
+        capaImg.fill(pretoSuave)
+
+    estrelasCapa = []
+    for _ in range(100):
+        x = random.randint(0, larguraTela)
+        y = random.randint(0, alturaTela)
+        raio = random.randint(1, 3)
+        estrelasCapa.append({"x": x, "y": y, "raio": raio})
+
+    x_pos_botoes = larguraTela // 2 - 50
+    y_jogar = alturaTela - 150 
+    y_regras = y_jogar + 50     
+    y_sair = y_regras + 50      
+
+    rodando = True
+    
+    tempo_piscar_capa = time.time()
+    estado_piscar_capa = True 
+    intervalo_piscar = 0.4 
+
+    texto_jogar_surf_base = fonte_menu_botoes.render("JOGAR", True, brancoPuro)
+    texto_jogar_rect_base = texto_jogar_surf_base.get_rect(center=(x_pos_botoes, y_jogar))
+    
+    texto_regras_surf_base = fonte_menu_botoes.render("REGRAS", True, brancoPuro) 
+    texto_regras_rect_base = texto_regras_surf_base.get_rect(center=(x_pos_botoes, y_regras)) 
+    
+    texto_sair_surf_base = fonte_menu_botoes.render("SAIR", True, brancoPuro)
+    texto_sair_rect_base = texto_sair_surf_base.get_rect(center=(x_pos_botoes, y_sair))
+
+    while rodando and not should_exit_game: 
+        pos_mouse_hover = pygame.mouse.get_pos()
+        
+        tempo_atual = time.time()
+        if tempo_atual - tempo_piscar_capa >= intervalo_piscar:
+            estado_piscar_capa = not estado_piscar_capa
+            tempo_piscar_capa = tempo_atual
+
+        for evento in pygame.event.get():
+            if evento.type == pygame.QUIT:
+                should_exit_game = True 
+                break
+            elif evento.type == pygame.K_ESCAPE: 
+                should_exit_game = True 
+                break
+            elif evento.type == pygame.MOUSEBUTTONDOWN and evento.button == 1:
+                if texto_jogar_rect_base.collidepoint(evento.pos):
+                    nome = pedir_nome()
+                    return nome
+                
+                if texto_regras_rect_base.collidepoint(evento.pos):
+                    tela_regras(tela) 
+                    if should_exit_game: 
+                        break
+                    
+                if texto_sair_rect_base.collidepoint(evento.pos):
+                    should_exit_game = True 
+                    break
+        
+        if should_exit_game: 
+            break
+
+        tela.blit(capaImg, (0, 0))
+
+        for estrela in estrelasCapa:
+            pygame.draw.circle(tela, brancoPuro, (estrela["x"], estrela["y"]), estrela["raio"])
+
+        texto_sombra = fonteTituloGrande.render("COMBATE COSMICO", True, cinzaEscuro)
+        texto_sombra_rect = texto_sombra.get_rect(center=(larguraTela // 2 + 3, 150 + 3))
+        tela.blit(texto_sombra, texto_sombra_rect)
+
+        textoTitulo = fonteTituloGrande.render("COMBATE COSMICO", True, brancoPuro)
+        textoTituloRect = textoTitulo.get_rect(center=(larguraTela // 2, 150))
+        tela.blit(textoTitulo, textoTituloRect)
+
+        prefixo_jogar = " "
+        if texto_jogar_rect_base.collidepoint(pos_mouse_hover): 
+            prefixo_jogar = ">"
+            tela.blit(fonte_menu_botoes.render(f"{prefixo_jogar} JOGAR", True, brancoPuro), texto_jogar_rect_base)
+        elif estado_piscar_capa: 
+            tela.blit(fonte_menu_botoes.render(f"{prefixo_jogar} JOGAR", True, brancoPuro), texto_jogar_rect_base)
+
+        prefixo_regras = " "
+        if texto_regras_rect_base.collidepoint(pos_mouse_hover):
+            prefixo_regras = ">"
+            tela.blit(fonte_menu_botoes.render(f"{prefixo_regras} REGRAS", True, brancoPuro), texto_regras_rect_base)
+        elif estado_piscar_capa:
+            tela.blit(fonte_menu_botoes.render(f"{prefixo_regras} REGRAS", True, brancoPuro), texto_regras_rect_base)
+
+        prefixo_sair = " "
+        if texto_sair_rect_base.collidepoint(pos_mouse_hover): 
+            prefixo_sair = ">"
+            tela.blit(fonte_menu_botoes.render(f"{prefixo_sair} SAIR", True, brancoPuro), texto_sair_rect_base)
+        elif estado_piscar_capa: 
+            tela.blit(fonte_menu_botoes.render(f"{prefixo_sair} SAIR", True, brancoPuro), texto_sair_rect_base)
+
+        pygame.display.flip()
+        pygame.time.Clock().tick(60)
+    
+    if should_exit_game:
+        return None 
+
+    return None 
