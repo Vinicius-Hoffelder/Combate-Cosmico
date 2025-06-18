@@ -542,3 +542,325 @@ def tela_capa(tela):
         return None 
 
     return None 
+
+def jogo(nome):
+    global should_exit_game 
+    if should_exit_game: 
+        return 
+
+    tela = pygame.display.set_mode((larguraTela, alturaTela))
+    pygame.display.set_caption("Combate Cósmico")
+    relogio = pygame.time.Clock()
+
+    tempo_inicio_jogo = time.time()
+
+    fundoJogo = pygame.image.load("Arquivos/fundo_Jogo.jpeg")
+    fundoAltura = fundoJogo.get_height()
+    fundoY = 0
+
+    inimigoImg = pygame.image.load("Arquivos/naveInimigo.png")
+    naveJogador = pygame.image.load("Arquivos/navePlayer.png")
+    tiroImagem = pygame.image.load("Arquivos/Tiro.png")
+    etImagem = pygame.image.load("Arquivos/Et.png")
+    caixaMisteriosa = pygame.image.load("Arquivos/CaixaMisteriosa.png")
+
+    somTiro = pygame.mixer.Sound("Arquivos/SomTiro.mp3")
+    somExplosao = pygame.mixer.Sound("Arquivos/Explosao.mp3")
+    pygame.mixer.music.load("Arquivos/Soundtrack.mp3")
+    pygame.mixer.music.set_volume(0.4)
+    pygame.mixer.music.play(-1)
+    somTiro.set_volume(0.1)
+    somExplosao.set_volume(0.3)
+
+    posicaoNaveX = 450
+    posicaoNaveY = 550
+    movimentoNaveX = 0
+    vidas = 2
+    invencivel = False
+    tempoInvencivel = 0
+
+    tiros = []
+    ladoTiroDireito = True
+
+    tirosEspecial = False
+    tempoEspecial = 0
+    temEspecial = False
+
+    maxMunicao = 6
+    maxMunicaoBase = maxMunicao
+    municaoRestante = maxMunicao
+    municaoLimite = 24
+    ultimoTempoTiro = 0
+    tempoEspera = 2
+    ultimoMetroMunicao = 0
+    municaoRecarregando = False
+
+
+    metros = 0.0
+    velocidadeMetros = 0.07
+    ultimoMetroInimigo = 0
+    ultimoMetroCaixa = 0
+
+    numInimigos = 10
+    inimigos = []
+    for _ in range(numInimigos):
+        x = random.randint(0, larguraTela - inimigoImg.get_width())
+        y = random.randint(-800, -100)
+        vel = random.uniform(1.5, 4.5)
+        vida = 3
+        inimigos.append({"x": x, "y": y, "vel": vel, "vida": vida})
+
+    caixas = []
+
+    etVisivel = False
+    etX = larguraTela
+    etY = random.randint(100, 600)
+    etVel = 3
+
+    estrelas = []
+    for _ in range(150):
+        x = random.randint(0, larguraTela)
+        y = random.randint(0, alturaTela)
+        raio = random.randint(1, 2)
+        velocidade = random.uniform(0.5, 2)
+        estrelas.append({"x": x, "y": y, "raio": raio, "vel": velocidade})
+
+
+    def toque_exato(rect1, rect2):
+        return rect1.colliderect(rect2)
+
+    rodando = True
+    pausado = False
+    clock = pygame.time.Clock()
+
+    while rodando and not should_exit_game: 
+        tempoAtual = time.time()
+        for evento in pygame.event.get():
+            if evento.type == pygame.QUIT:
+                tempo_fim_jogo = time.time()
+                duracao_jogo = tempo_fim_jogo - tempo_inicio_jogo
+                escreverDados(nome, int(metros), duracao_jogo)
+                should_exit_game = True 
+                break
+            elif evento.type == pygame.KEYDOWN:
+                if evento.key == pygame.K_SPACE:
+                    pausado = not pausado
+                elif evento.key == pygame.K_ESCAPE: 
+                    tempo_fim_jogo = time.time()
+                    duracao_jogo = tempo_fim_jogo - tempo_inicio_jogo
+                    escreverDados(nome, int(metros), duracao_jogo)
+                    should_exit_game = True 
+                    break
+                elif evento.key == pygame.K_DOWN and temEspecial:
+                    tirosEspecial = True
+                    tempoEspecial = tempoAtual
+                    temEspecial = False
+                    maxMunicao = maxMunicaoBase * 2
+                    municaoRestante = min(municaoRestante * 2, maxMunicao)
+        
+        if should_exit_game: 
+            break
+
+        if pausado:
+            tela.fill(pretoSuave)
+            textoPausa = fontePrincipal.render("PAUSADO", True, azulNeon)
+            textoPausaRect = textoPausa.get_rect(center=(larguraTela//2, alturaTela//2 - 30))
+            tela.blit(textoPausa, textoPausaRect)
+
+            textoInstrucao = fonteSecundaria.render("APERTE ESPACO PARA CONTINUAR", True, brancoPuro)
+            textoInstrucaoRect = textoInstrucao.get_rect(center=(larguraTela//2, alturaTela//2 + 20))
+            tela.blit(textoInstrucao, textoInstrucaoRect)
+            pygame.display.flip()
+            clock.tick(60)
+            continue
+
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_RIGHT]: movimentoNaveX = 5
+        elif keys[pygame.K_LEFT]: movimentoNaveX = -5
+        else: movimentoNaveX = 0
+
+        if keys[pygame.K_UP]:
+            if municaoRestante > 0 and (len(tiros) == 0 or tiros[-1].y < posicaoNaveY - 30):
+                tiroX = posicaoNaveX + (57 if ladoTiroDireito else 0)
+                tiros.append(pygame.Rect(tiroX, posicaoNaveY, tiroImagem.get_width(), tiroImagem.get_height()))
+                ladoTiroDireito = not ladoTiroDireito
+                somTiro.play()
+                municaoRestante -= 1
+                create_explosion_particles(tiroX + tiroImagem.get_width() / 2, posicaoNaveY, 5, [(255, 255, 0), (255, 100, 0)], 1, 3, 0.5, 1.5, 0.1)
+
+                if municaoRestante == 0:
+                    ultimoTempoTiro = tempoAtual
+                    municaoRecarregando = True
+            elif municaoRestante == 0 and not municaoRecarregando:
+                    ultimoTempoTiro = tempoAtual
+                    municaoRecarregando = True
+
+        if tirosEspecial and tempoAtual - tempoEspecial > 7:
+            tirosEspecial = False
+            maxMunicao = maxMunicaoBase
+            municaoRestante = min(municaoRestante, maxMunicao)
+
+        if municaoRecarregando and tempoAtual - ultimoTempoTiro >= tempoEspera:
+            municaoRestante = maxMunicao
+            municaoRecarregando = False
+
+        posicaoNaveX += movimentoNaveX
+        posicaoNaveX = max(0, min(posicaoNaveX, larguraTela - naveJogador.get_width()))
+
+        for tiro in tiros: tiro.y -= 8
+        tiros = [tiro for tiro in tiros if tiro.y > -10]
+
+        rectJogador = pygame.Rect(posicaoNaveX + 20, posicaoNaveY + 20, 60, 60)
+        
+        caixas_a_remover = [] 
+        for caixa in caixas:
+            caixa["y"] += caixa["vel"]
+            caixaRect = pygame.Rect(caixa["x"], caixa["y"], caixaMisteriosa.get_width(), caixaMisteriosa.get_height())
+
+            if toque_exato(caixaRect, rectJogador):
+                temEspecial = True 
+                caixas_a_remover.append(caixa) 
+                
+            if caixa["y"] > alturaTela:
+                caixas_a_remover.append(caixa) 
+
+        for caixa in caixas_a_remover:
+            if caixa in caixas: 
+                caixas.remove(caixa)
+
+
+        for inimigo in inimigos:
+            inimigo["y"] += inimigo["vel"]
+            inimigoRect = pygame.Rect(inimigo["x"] + 10, inimigo["y"] + 10, 60, 60)
+
+            for tiro in tiros[:]:
+                if tiro.colliderect(inimigoRect):
+                    inimigo["vida"] -= 1
+                    tiros.remove(tiro)
+                    if inimigo["vida"] <= 0:
+                        somExplosao.play()
+                        create_explosion_particles(inimigoRect.centerx, inimigoRect.centery, 20, 
+                                                     [(255, 100, 0), (255, 200, 0), (255, 255, 100), (100, 100, 100)],
+                                                     2, 8, 1, 4, 0.2)
+                        inimigo["x"] = random.randint(0, larguraTela - inimigoImg.get_width())
+                        inimigo["y"] = random.randint(-800, -100)
+                        inimigo["vel"] = random.uniform(1.5, 4.5)
+                        inimigo["vida"] = 3
+                    break
+
+            if inimigo["y"] > alturaTela:
+                inimigo["x"] = random.randint(0, larguraTela - inimigoImg.get_width())
+                inimigo["y"] = random.randint(-800, -100)
+                inimigo["vel"] = random.uniform(1.5, 4.5)
+                inimigo["vida"] = 3
+
+            if toque_exato(inimigoRect, rectJogador):
+                if not invencivel:
+                    vidas -= 1
+                    inimigo["y"] = -100
+                    invencivel = True
+                    tempoInvencivel = tempoAtual
+                    if vidas <= 0:
+                        rodando = False 
+                        tempo_fim_jogo = time.time()
+                        duracao_jogo = tempo_fim_jogo - tempo_inicio_jogo
+                        escreverDados(nome, int(metros), duracao_jogo)
+                        break 
+        
+        if should_exit_game: 
+            break
+
+        if invencivel and tempoAtual - tempoInvencivel >= 2: invencivel = False
+
+        metros += velocidadeMetros
+
+        if int(metros) - ultimoMetroMunicao >= 100:
+            ultimoMetroMunicao = int(metros)
+            if maxMunicaoBase < municaoLimite:
+                maxMunicaoBase += 1
+                if not tirosEspecial:
+                    maxMunicao = maxMunicaoBase
+                municaoRestante = min(municaoRestante, maxMunicao)
+
+        if int(metros) - ultimoMetroInimigo >= 400:
+            ultimoMetroInimigo = int(metros)
+            x = random.randint(0, larguraTela - inimigoImg.get_width())
+            y = random.randint(-800, -100)
+            vel = random.uniform(1.5, 4.5)
+            vida = 3
+            inimigos.append({"x": x, "y": y, "vel": vel, "vida": vida})
+
+        if int(metros) - ultimoMetroCaixa >= 150:
+            ultimoMetroCaixa = int(metros)
+            caixaX = random.randint(50, larguraTela - 50)
+            caixaY = random.randint(-400, -100)
+            caixas.append({"x": caixaX, "y": caixaY, "vel": 3})
+
+        if metros >= 400: etVisivel = True
+
+        if etVisivel:
+            etX -= etVel
+            if etX < -etImagem.get_width():
+                etVisivel = False
+                etX = larguraTela
+                etY = random.randint(100, 600)
+
+        tela.fill(pretoSuave)
+        for estrela in estrelas:
+            estrela["y"] += estrela["vel"]
+            if estrela["y"] > alturaTela:
+                estrela["y"] = random.randint(-10, 0)
+                estrela["x"] = random.randint(0, larguraTela)
+            pygame.draw.circle(tela, brancoPuro, (int(estrela["x"]), int(estrela["y"])), estrela["raio"])
+
+        fundoY += velocidadeMetros * 5
+        if fundoY >= fundoAltura:
+            fundoY = 0
+        tela.blit(fundoJogo, (0, fundoY - fundoAltura))
+        tela.blit(fundoJogo, (0, fundoY))
+
+        for inimigo in inimigos: tela.blit(inimigoImg, (inimigo["x"], inimigo["y"]))
+        for tiro in tiros: tela.blit(tiroImagem, (tiro.x, tiro.y))
+        for caixa in caixas: tela.blit(caixaMisteriosa, (caixa["x"], caixa["y"]))
+
+        if etVisivel: tela.blit(etImagem, (etX, etY))
+
+        for particle in particles[:]:
+            if particle.move():
+                particles.remove(particle)
+            else:
+                particle.draw(tela)
+
+        if invencivel and int((tempoAtual*5)%2) == 0:
+            tempSurf = pygame.Surface(naveJogador.get_size(), pygame.SRCALPHA)
+            tempSurf.blit(naveJogador, (0,0))
+            tempSurf.set_alpha(100 + 50 * (math.sin(tempoAtual * 10) + 1))
+            tela.blit(tempSurf, (posicaoNaveX, posicaoNaveY))
+        else:
+            tela.blit(naveJogador, (posicaoNaveX, posicaoNaveY))
+
+        textoMetros = fontePequena.render(f"METROS: {int(metros)}", True, brancoPuro)
+        tela.blit(textoMetros, (10, 10))
+
+        textoVidas = fontePequena.render(f"VIDAS: {vidas}", True, brancoPuro)
+        tela.blit(textoVidas, (10, 40))
+
+        if temEspecial:
+            textoEspecial = fonteMenor.render("ESPECIAL PRONTO", True, brancoPuro) 
+            tela.blit(textoEspecial, (10, 70))
+
+        desenhar_barra_municao(tela, municaoRestante, maxMunicao, municaoRecarregando, ultimoTempoTiro, tempoEspera)
+
+        pygame.display.flip()
+        clock.tick(60)
+
+    if not should_exit_game:
+        tempo_fim_jogo = time.time()
+        duracao_jogo = tempo_fim_jogo - tempo_inicio_jogo
+        
+        escreverDados(nome, int(metros), duracao_jogo)
+
+        jogarNovamente = tela_morte(tela, nome, int(metros))
+        if jogarNovamente:
+            jogo(nome)
+
