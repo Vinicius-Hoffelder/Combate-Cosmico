@@ -11,3 +11,4 @@ Descrição Jogo - Nave que desvia de outras tentando conseguir o maior numero d
 - speech_recognition
 - threading
 - datetime
+- cx_Frezze
