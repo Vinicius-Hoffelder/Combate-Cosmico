@@ -11,21 +11,22 @@ def aguarde(segundos):
 def inicializarBancoDeDados():
     if not os.path.exists("log.dat"):
         with open("log.dat", "w") as f:
-            json.dump([], f)
+            json.dump({}, f)
 
-def escreverDados(nome, metros, tempo_total_segundos):
-    horas = int(tempo_total_segundos // 3600)
-    minutos = int((tempo_total_segundos % 3600) // 60)
-    segundos = int(tempo_total_segundos % 60)
+def escreverDados(nome, metros, tempo_vivo_segundos): 
+    data_hora_agora = datetime.now()
+    data_hora_formatada = data_hora_agora.strftime("%d/%m/%Y %H:%M:%S")
 
-    with open("log.dat", "r") as f:
-        dados = json.load(f)
+    try:
+        with open("log.dat", "r") as f:
+            dados = json.load(f)
+    except (json.JSONDecodeError, FileNotFoundError):
+        dados = {}
 
-    dados.append({
-        "nome": nome,
-        "metros": metros,
-        "tempo": f"{horas:02d}:{minutos:02d}:{segundos:02d}"
-    })
+    if nome not in dados:
+        dados[nome] = []
+    
+    dados[nome].append((metros, tempo_vivo_segundos, data_hora_formatada))
 
     with open("log.dat", "w") as f:
         json.dump(dados, f, indent=4)
