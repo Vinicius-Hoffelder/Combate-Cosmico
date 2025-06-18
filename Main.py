@@ -96,3 +96,91 @@ def escreverDados(nome, metros, tempo_vivo_segundos):
     data_hora_agora = datetime.now()
     data_hora_formatada = data_hora_agora.strftime("%d/%m/%Y %H:%M:%S")
 
+
+    try:
+        with open("log.dat", "r") as f:
+            dados = json.load(f)
+    except (json.JSONDecodeError, FileNotFoundError):
+        dados = {}
+
+    if nome not in dados:
+        dados[nome] = []
+    
+    dados[nome].append((metros, tempo_vivo_segundos, data_hora_formatada))
+
+    with open("log.dat", "w") as f:
+        json.dump(dados, f, indent=4)
+
+def lerDados(nome):
+    if not os.path.exists("log.dat"):
+        return []
+    try:
+        with open("log.dat", "r") as f:
+            dados = json.load(f)
+        return dados.get(nome, [])
+    except json.JSONDecodeError:
+        return []
+
+def pedir_nome():
+    root = tk.Tk()
+    root.withdraw()
+    nome = None
+    while not nome:
+        nome = simpledialog.askstring("NOME", "DIGITE SEU NOME:")
+    root.destroy()
+    return nome
+
+class Botao:
+    def __init__(self, x, y, w, h, texto, fonte, corTexto, corBotao, corSombra):
+        self.rect = pygame.Rect(x, y, w, h)
+        self.texto = texto
+        self.fonte = fonte
+        self.corTexto = corTexto
+        self.corBotao = corBotao
+        self.corSombra = corSombra
+        self.sombraOffset = 5
+
+    def draw(self, tela):
+        sombraRect = self.rect.copy()
+        sombraRect.x += self.sombraOffset
+        sombraRect.y += self.sombraOffset
+        pygame.draw.rect(tela, self.corSombra, sombraRect, border_radius=8)
+        pygame.draw.rect(tela, self.corBotao, self.rect, border_radius=8)
+        textoSurf = self.fonte.render(self.texto, True, self.corTexto)
+        textoRect = textoSurf.get_rect(center=self.rect.center)
+        tela.blit(textoSurf, textoRect)
+
+    def clicado(self, pos):
+        return self.rect.collidepoint(pos)
+
+class Particle:
+    def __init__(self, x, y, color, radius, xVel, yVel, decayRate):
+        self.x = x
+        self.y = y
+        self.color = color
+        self.radius = radius
+        self.xVel = xVel
+        self.yVel = yVel
+        self.decayRate = decayRate
+
+    def move(self):
+        self.x += self.xVel
+        self.y += self.yVel
+        self.radius -= self.decayRate
+        return self.radius <= 0
+
+    def draw(self, screen):
+        if self.radius > 0:
+            pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), int(self.radius))
+
+particles = []
+
+def create_explosion_particles(x, y, numParticles, colors, minRadius, maxRadius, minVel, maxVel, decay):
+    for _ in range(numParticles):
+        color = random.choice(colors)
+        radius = random.uniform(minRadius, maxRadius)
+        angle = random.uniform(0, 2 * math.pi)
+        speed = random.uniform(minVel, maxVel)
+        xVel = speed * math.cos(angle)
+        yVel = speed * math.sin(angle)
+        particles.append(Particle(x, y, color, radius, xVel, yVel, decay))
