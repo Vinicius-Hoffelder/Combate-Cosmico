@@ -96,7 +96,6 @@ def escreverDados(nome, metros, tempo_vivo_segundos):
     data_hora_agora = datetime.now()
     data_hora_formatada = data_hora_agora.strftime("%d/%m/%Y %H:%M:%S")
 
-
     try:
         with open("log.dat", "r") as f:
             dados = json.load(f)
@@ -175,7 +174,7 @@ class Particle:
 
 particles = []
 
-def create_explosion_particles(x, y, numParticles, colors, minRadius, maxRadius, minVel, maxVel, decay):
+def explosão_particulas(x, y, numParticles, colors, minRadius, maxRadius, minVel, maxVel, decay):
     for _ in range(numParticles):
         color = random.choice(colors)
         radius = random.uniform(minRadius, maxRadius)
@@ -345,6 +344,8 @@ def tela_morte(tela, nome, metros):
 
         pygame.display.flip()
         pygame.time.Clock().tick(60)
+
+    return False 
 
 def tela_regras(tela):
     global should_exit_game
@@ -686,7 +687,7 @@ def jogo(nome):
                 ladoTiroDireito = not ladoTiroDireito
                 somTiro.play()
                 municaoRestante -= 1
-                create_explosion_particles(tiroX + tiroImagem.get_width() / 2, posicaoNaveY, 5, [(255, 255, 0), (255, 100, 0)], 1, 3, 0.5, 1.5, 0.1)
+                explosão_particulas(tiroX + tiroImagem.get_width() / 2, posicaoNaveY, 5, [(255, 255, 0), (255, 100, 0)], 1, 3, 0.5, 1.5, 0.1)
 
                 if municaoRestante == 0:
                     ultimoTempoTiro = tempoAtual
@@ -739,7 +740,7 @@ def jogo(nome):
                     tiros.remove(tiro)
                     if inimigo["vida"] <= 0:
                         somExplosao.play()
-                        create_explosion_particles(inimigoRect.centerx, inimigoRect.centery, 20, 
+                        explosão_particulas(inimigoRect.centerx, inimigoRect.centery, 20, 
                                                      [(255, 100, 0), (255, 200, 0), (255, 255, 100), (100, 100, 100)],
                                                      2, 8, 1, 4, 0.2)
                         inimigo["x"] = random.randint(0, larguraTela - inimigoImg.get_width())
@@ -864,3 +865,28 @@ def jogo(nome):
         if jogarNovamente:
             jogo(nome)
 
+
+if __name__ == "__main__":
+    inicializarBancoDeDados()
+    tela = pygame.display.set_mode((larguraTela, alturaTela))
+    try:
+        pygame.font.Font(caminhoFonte, 10)
+    except FileNotFoundError:
+        print(f"Certifique-se de que '{caminhoFonte}' está na pasta 'Arquivos'.")
+
+    mic_thread = threading.Thread(target=listen_for_exit_command, daemon=True)
+    mic_thread.start()
+
+    nomeJogador = tela_capa(tela)
+    
+    if not should_exit_game:
+        if nomeJogador: 
+            jogo(nomeJogador)
+        else:
+            print("Jogo encerrado a partir da tela de capa (nome não fornecido ou saída precoce).") 
+    else:
+        print("Jogo encerrado por comando de voz ou ESC/QUIT.") 
+
+    if should_exit_game:
+        pygame.quit()
+        exit()
