@@ -12,3 +12,5 @@ Descrição Jogo - Nave que desvia de outras tentando conseguir o maior numero d
 - threading
 - datetime
 - cx_Frezze
+
+Testador do Jogo: Luiza Neckel (1137716)
